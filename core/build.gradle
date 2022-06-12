@@ -82,7 +82,10 @@ dependencies {
 
     shaded "org.yaml:snakeyaml:1.30"
 
-    shaded 'org.glassfish.main.external:trilead-ssh2-repackaged:4.1.2'
+//    shaded 'org.glassfish.main.external:trilead-ssh2-repackaged:4.1.2'
+    shaded 'com.jcraft:jsch:0.1.55'
+//    shaded 'org.jenkins-ci:trilead-ssh2:trilead-ssh2-build-217-jenkins-17'
+
 
     shaded 'org.zeroturnaround:zt-exec:1.12'
 

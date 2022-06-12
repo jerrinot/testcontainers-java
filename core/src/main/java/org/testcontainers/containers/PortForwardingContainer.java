@@ -1,13 +1,13 @@
 package org.testcontainers.containers;
 
 import com.github.dockerjava.api.model.ContainerNetwork;
-import com.trilead.ssh2.Connection;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.Map.Entry;
@@ -25,10 +25,10 @@ public enum PortForwardingContainer {
     private final Set<Entry<Integer, Integer>> exposedPorts = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Getter(value = AccessLevel.PRIVATE, lazy = true)
-    private final Connection sshConnection = createSSHSession();
+    private final Session sshConnection = createSSHSession();
 
     @SneakyThrows
-    private Connection createSSHSession() {
+    private Session createSSHSession() {
         String password = UUID.randomUUID().toString();
         container =
             new GenericContainer<>(DockerImageName.parse("testcontainers/sshd:1.0.0"))
@@ -42,20 +42,24 @@ public enum PortForwardingContainer {
                 );
         container.start();
 
-        Connection connection = new Connection(container.getHost(), container.getMappedPort(22));
+        Session session = new JSch().getSession("root", container.getHost(), container.getMappedPort(22));
+        session.setPassword(password);
+        session.setConfig("StrictHostKeyChecking", "no");
+        session.connect(30000);
 
-        connection.setTCPNoDelay(true);
-        connection.connect(
-            (hostname, port, serverHostKeyAlgorithm, serverHostKey) -> true,
-            (int) Duration.ofSeconds(30).toMillis(),
-            (int) Duration.ofSeconds(30).toMillis()
-        );
 
-        if (!connection.authenticateWithPassword("root", password)) {
-            throw new IllegalStateException("Authentication failed.");
-        }
+//        connection.setTCPNoDelay(true);
+//        connection.connect(
+//            (hostname, port, serverHostKeyAlgorithm, serverHostKey) -> true,
+//            (int) Duration.ofSeconds(30).toMillis(),
+//            (int) Duration.ofSeconds(30).toMillis()
+//        );
+//
+//        if (!connection.authenticateWithPassword("root", password)) {
+//            throw new IllegalStateException("Authentication failed.");
+//        }
 
-        return connection;
+        return session;
     }
 
     @SneakyThrows
@@ -66,7 +70,7 @@ public enum PortForwardingContainer {
     @SneakyThrows
     public void exposeHostPort(int hostPort, int containerPort) {
         if (exposedPorts.add(new AbstractMap.SimpleEntry<>(hostPort, containerPort))) {
-            getSshConnection().requestRemotePortForwarding("", containerPort, "localhost", hostPort);
+            getSshConnection().setPortForwardingR(containerPort, "localhost", hostPort);
         }
     }
 
